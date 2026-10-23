@@ -1,0 +1,14 @@
+{
+  "name": "harbor-line-email-triage-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Disconnected proposal prototype for Harbor Line Bikes email triage.",
+  "scripts": {
+    "build-demo": "node build-browser-data.js",
+    "evaluate": "node evaluate.js",
+    "test": "node test.js",
+    "test:adversarial": "node adversarial-test.js",
+    "test:browser": "node browser-smoke-test.js",
+    "start": "node server.js"
+  }
+}

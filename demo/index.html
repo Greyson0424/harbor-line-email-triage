@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harbor Line Email Triage Prototype</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fc;
+      --surface: #ffffff;
+      --surface-2: #eef3fb;
+      --text: #202124;
+      --muted: #5f6368;
+      --line: #dfe3e8;
+      --blue: #0b57d0;
+      --blue-soft: #d3e3fd;
+      --red: #b3261e;
+      --red-soft: #fce8e6;
+      --green: #146c2e;
+      --green-soft: #e6f4ea;
+      --yellow: #7a5d00;
+      --yellow-soft: #fef7e0;
+      --purple: #681da8;
+      --purple-soft: #f3e8fd;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; }
+    button, select, input, textarea { font: inherit; }
+    .topbar { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 10px 22px; background: var(--surface); border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .mark { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: #165d3a; color: white; font-weight: 700; }
+    h1 { margin: 0; font-size: 19px; font-weight: 600; }
+    .subtitle { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .run-button { min-height: 40px; border: 0; border-radius: 8px; padding: 0 16px; background: var(--blue); color: white; font-weight: 600; }
+    .secondary-button { min-height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 0 14px; background: var(--surface); color: var(--blue); font-weight: 600; }
+    .run-button:disabled { opacity: .65; }
+    .mode-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 20px 0; padding: 10px 14px; border: 1px solid #f2cf66; border-radius: 9px; background: var(--yellow-soft); color: #604b00; font-size: 13px; }
+    .mode-pill { white-space: nowrap; padding: 4px 8px; border-radius: 12px; background: #fff2b8; font-weight: 700; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 12px; padding: 16px 20px; }
+    .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px; }
+    .metric-label { color: var(--muted); font-size: 12px; }
+    .metric-value { margin-top: 4px; font-size: 24px; font-weight: 600; }
+    .metric-context { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .workspace { display: grid; grid-template-columns: minmax(410px, 46%) 1fr; margin: 0 20px 20px; min-height: 580px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .list-panel { border-right: 1px solid var(--line); min-width: 0; }
+    .toolbar { min-height: 58px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .filter { min-height: 34px; padding: 0 11px; border: 1px solid var(--line); border-radius: 17px; background: var(--surface); color: var(--text); }
+    .filter.active { background: var(--blue-soft); border-color: transparent; color: var(--blue); font-weight: 600; }
+    .status { margin-left: auto; color: var(--muted); font-size: 12px; }
+    .email-list { max-height: 520px; overflow: auto; }
+    .email-row { width: 100%; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; padding: 11px 13px; border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--text); text-align: left; }
+    .email-row:hover, .email-row.selected { background: var(--surface-2); }
+    .email-row.selected { box-shadow: inset 3px 0 0 var(--blue); }
+    .email-id { color: var(--muted); font-size: 12px; padding-top: 2px; }
+    .sender, .subject, .snippet { display: block; }
+    .sender { font-weight: 600; font-size: 13px; }
+    .subject { margin-top: 3px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .snippet { margin-top: 3px; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .labels { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+    .label { padding: 3px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: capitalize; }
+    .bookings { background: var(--blue-soft); color: var(--blue); }
+    .repairs { background: var(--purple-soft); color: var(--purple); }
+    .billing { background: var(--green-soft); color: var(--green); }
+    .urgent { background: var(--red-soft); color: var(--red); }
+    .review { background: var(--yellow-soft); color: var(--yellow); }
+    .correct { color: var(--green); }
+    .incorrect { color: var(--red); }
+    .detail { padding: 22px 24px; min-width: 0; }
+    .detail-empty { height: 100%; display: grid; place-items: center; color: var(--muted); text-align: center; }
+    .detail h2 { margin: 0; font-size: 20px; }
+    .from { margin-top: 8px; color: var(--muted); font-size: 13px; }
+    .body { margin-top: 22px; line-height: 1.55; white-space: pre-wrap; max-height: 220px; overflow: auto; }
+    .decision { margin-top: 20px; padding: 14px 16px; background: var(--surface-2); border-left: 4px solid var(--blue); }
+    .decision.urgent-border { border-left-color: var(--red); }
+    .decision-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600; }
+    .reason { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+    .comparison-item { padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; }
+    .comparison-item span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+    .note { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .confidence { margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--line); }
+    .action-button { min-height: 34px; border: 1px solid var(--line); border-radius: 7px; padding: 0 11px; background: var(--surface); color: var(--text); }
+    .action-button.primary { background: var(--blue); border-color: var(--blue); color: white; }
+    .action-button.alert { background: var(--red); border-color: var(--red); color: white; }
+    .route-select { min-height: 34px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 0 8px; }
+    .audit { margin-top: 18px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 9px; background: #fafbff; }
+    .audit h3 { margin: 0 0 9px; font-size: 13px; }
+    .audit-item { display: grid; grid-template-columns: 62px 1fr; gap: 8px; padding: 5px 0; color: var(--muted); font-size: 11px; border-top: 1px solid #eceff3; }
+    .audit-item:first-of-type { border-top: 0; }
+    .unscored { color: var(--muted); font-size: 11px; }
+    dialog { width: min(620px, calc(100% - 28px)); border: 0; border-radius: 12px; padding: 0; box-shadow: 0 14px 50px rgba(32,33,36,.25); }
+    dialog::backdrop { background: rgba(32,33,36,.45); }
+    .dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 20px 22px 12px; }
+    .dialog-head h2 { margin: 0; font-size: 20px; }
+    .dialog-head p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .close-button { border: 0; background: transparent; color: var(--muted); font-size: 22px; }
+    .trial-form { padding: 4px 22px 22px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: grid; gap: 5px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .field input, .field textarea { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 9px 10px; }
+    .field textarea { min-height: 150px; resize: vertical; line-height: 1.4; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+    .evidence-body { padding: 2px 22px 22px; max-height: 72vh; overflow: auto; }
+    .evidence-section { padding: 14px 0; border-top: 1px solid var(--line); }
+    .evidence-section:first-child { border-top: 0; }
+    .evidence-section h3 { margin: 0 0 8px; font-size: 15px; }
+    .evidence-section p { margin: 6px 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+    .summary-box { padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+    .summary-box span { display: block; color: var(--muted); font-size: 11px; }
+    .summary-box strong { display: block; margin-top: 4px; font-size: 17px; text-transform: capitalize; }
+    .matrix { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+    .matrix th, .matrix td { padding: 7px; border: 1px solid var(--line); text-align: center; }
+    .matrix th:first-child { text-align: left; }
+    .handoff-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+    .handoff-card { padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+    .handoff-card h4 { margin: 0 0 6px; font-size: 13px; }
+    .handoff-card p { margin: 0; font-size: 12px; }
+    .progress-wrap { display: none; padding: 0 20px 16px; }
+    .progress { height: 8px; border-radius: 4px; background: #dfe3e8; overflow: hidden; }
+    .progress-bar { width: 0; height: 100%; background: var(--blue); transition: width 160ms ease; }
+    @media (max-width: 850px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .workspace { grid-template-columns: 1fr; }
+      .list-panel { border-right: 0; border-bottom: 1px solid var(--line); }
+      .email-list { max-height: 360px; }
+    }
+    @media (max-width: 520px) {
+      .metrics { grid-template-columns: 1fr; }
+      .workspace { margin: 0 10px 10px; }
+      .topbar { align-items: flex-start; }
+      .top-actions { flex-direction: column-reverse; align-items: stretch; }
+      .comparison { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .summary-grid, .handoff-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">HL</div>
+      <div><h1>Harbor Line Email Triage</h1><div class="subtitle">Disconnected proposal prototype · 50 simulated emails</div></div>
+    </div>
+    <div class="top-actions">
+      <button class="secondary-button" id="open-evidence" type="button">Evidence &amp; handoff</button>
+      <button class="secondary-button" id="open-trial" type="button">Try a new email</button>
+      <button class="run-button" id="run" type="button">Run 50 samples</button>
+    </div>
+  </header>
+
+  <div class="mode-banner">
+    <span><strong>Shadow mode:</strong> decisions are demonstrated locally. Nothing is moved, forwarded, deleted, or sent to customers.</span>
+    <span class="mode-pill">Safe demo</span>
+  </div>
+
+  <section class="metrics" aria-label="Evaluation results">
+    <div class="metric"><div class="metric-label">Processed</div><div class="metric-value" id="processed">—</div><div class="metric-context">sample emails</div></div>
+    <div class="metric"><div class="metric-label">Development-set agreement</div><div class="metric-value" id="accuracy">—</div><div class="metric-context" id="agreement-count">Not an independent test</div></div>
+    <div class="metric"><div class="metric-label">Urgent recall</div><div class="metric-value" id="urgent-recall">—</div><div class="metric-context" id="urgent-count">Most important safety measure</div></div>
+    <div class="metric"><div class="metric-label">Manual review</div><div class="metric-value" id="review-count">—</div><div class="metric-context">sensitive or low-confidence cases</div></div>
+  </section>
+  <div class="progress-wrap" id="progress-wrap"><div class="progress"><div class="progress-bar" id="progress-bar"></div></div></div>
+
+  <main class="workspace">
+    <section class="list-panel">
+      <div class="toolbar" aria-label="Result filters">
+        <button class="filter active" data-filter="all" type="button">All</button>
+        <button class="filter" data-filter="urgent" type="button">Urgent</button>
+        <button class="filter" data-filter="review" type="button">Review</button>
+        <button class="filter" data-filter="incorrect" type="button">Disagreements</button>
+        <span class="status" id="status">Not run</span>
+      </div>
+      <div class="email-list" id="email-list"><div class="detail-empty">Select “Run 50 samples” to process the supplied emails.</div></div>
+    </section>
+    <section class="detail" id="detail"><div class="detail-empty">Classification details will appear here.</div></section>
+  </main>
+
+  <dialog id="trial-dialog">
+    <div class="dialog-head">
+      <div><h2>Classify a new email</h2><p>Paste an unseen example to demonstrate a real decision. It remains only in this browser session.</p></div>
+      <button class="close-button" id="close-trial" type="button" aria-label="Close">×</button>
+    </div>
+    <form class="trial-form" id="trial-form">
+      <div class="form-grid">
+        <div class="field"><label for="trial-name">Sender name</label><input id="trial-name" value="Test customer"></div>
+        <div class="field"><label for="trial-email">Sender email</label><input id="trial-email" type="email" value="customer@example.com"></div>
+        <div class="field full"><label for="trial-subject">Subject</label><input id="trial-subject" required value="Bike will not start"></div>
+        <div class="field full"><label for="trial-body">Message</label><textarea id="trial-body" required>Hi, we rented two bikes this morning and one battery just died. We are at Point Pleasant Park near the main gate and cannot ride it back. Can someone help us?</textarea></div>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-button" id="cancel-trial" type="button">Cancel</button>
+        <button class="run-button" type="submit">Classify email</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="evidence-dialog">
+    <div class="dialog-head">
+      <div><h2>Run evidence and handoff</h2><p>The three assignment deliverables in one place.</p></div>
+      <button class="close-button" id="close-evidence" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="evidence-body">
+      <section class="evidence-section">
+        <h3>1–2. Working run and agreement</h3>
+        <div id="run-evidence"><p>Run the 50 supplied emails to generate the current report.</p></div>
+      </section>
+      <section class="evidence-section">
+        <h3>3. Who looks after it</h3>
+        <div class="handoff-grid">
+          <div class="handoff-card"><h4>Priya — daily owner</h4><p>Reviews the Needs Review label, corrects wrong routes and reports missed patterns.</p></div>
+          <div class="handoff-card"><h4>Connor — technical owner</h4><p>Checks the monthly health log, manages Workspace authorization and uses the kill switch during an outage.</p></div>
+          <div class="handoff-card"><h4>Doug — business owner</h4><p>Approves privacy, spending, alert ownership and any move beyond shadow mode.</p></div>
+        </div>
+      </section>
+      <section class="evidence-section">
+        <h3>What it costs</h3>
+        <p><strong>Software target:</strong> CAD $0/month for the rules-only Google Apps Script version using the shop’s existing Workspace. No external AI or new shared-inbox subscription is required.</p>
+        <p><strong>Human upkeep estimate:</strong> Connor 1–2 hours/month at the discovery estimate of CAD $65/hour, or CAD $65–$130/month in labour. “No new subscription” does not mean no staff cost.</p>
+      </section>
+      <section class="evidence-section">
+        <h3>What happens when it gets one wrong</h3>
+        <p>Nothing is deleted or automatically answered. Sensitive and low-confidence messages go to Priya Review. Priya changes the Gmail label; the original decision and correction remain in the metadata audit. A failed run leaves the message eligible for retry. A missed urgent case disables urgent automation for review, while the shop returns to its existing manual process. The kill switch stops the timer without deleting email.</p>
+      </section>
+      <div class="dialog-actions">
+        <button class="secondary-button" id="export-evidence" type="button" disabled>Download current run JSON</button>
+        <button class="run-button" id="done-evidence" type="button">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="classifier.js"></script>
+  <script src="browser-data.js"></script>
+  <script>
+    (() => {
+      const { emails, labels } = window.HLB_SAMPLE_DATA;
+      const truth = new Map(labels.map((item) => [item.id, item]));
+      let results = [];
+      let activeFilter = 'all';
+      let selectedId = null;
+      let liveCounter = 0;
+      let lastRunAt = null;
+      const auditEvents = [];
+      const list = document.getElementById('email-list');
+      const detail = document.getElementById('detail');
+      const trialDialog = document.getElementById('trial-dialog');
+      const evidenceDialog = document.getElementById('evidence-dialog');
+      const categories = ['bookings', 'repairs', 'billing', 'urgent'];
+
+      function addAudit(emailId, message) {
+        auditEvents.unshift({ emailId, message, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+      }
+
+      function classifyAll() {
+        results = emails.map((email) => {
+          const prediction = window.HLBClassifier.classifyEmail(email);
+          const expected = truth.get(email.id);
+          return {
+            ...email,
+            ...prediction,
+            predicted: prediction.category,
+            expected: expected.category,
+            expectedNote: expected.note,
+            correct: expected.category === prediction.category,
+            source: 'sample',
+          };
+        });
+        lastRunAt = new Date();
+        addAudit('RUN', 'Processed the 50 supplied emails in shadow mode. No Gmail actions were taken.');
+      }
+
+      function currentRunSummary() {
+        const labelled = results.filter((item) => item.source === 'sample' && item.expected);
+        const correct = labelled.filter((item) => item.correct).length;
+        const expectedUrgent = labelled.filter((item) => item.expected === 'urgent');
+        const foundUrgent = expectedUrgent.filter((item) => item.predicted === 'urgent').length;
+        const predictedUrgent = labelled.filter((item) => item.predicted === 'urgent');
+        const trueUrgentPredictions = predictedUrgent.filter((item) => item.expected === 'urgent').length;
+        const matrix = Object.fromEntries(categories.map((expected) => [
+          expected,
+          Object.fromEntries(categories.map((predicted) => [predicted, labelled.filter((item) => item.expected === expected && item.predicted === predicted).length])),
+        ]));
+        return {
+          runAt: lastRunAt ? lastRunAt.toISOString() : null,
+          processed: labelled.length,
+          correct,
+          disagreements: labelled.length - correct,
+          agreementPercent: labelled.length ? Math.round((correct / labelled.length) * 100) : null,
+          urgentFound: foundUrgent,
+          urgentExpected: expectedUrgent.length,
+          urgentRecallPercent: expectedUrgent.length ? Math.round((foundUrgent / expectedUrgent.length) * 100) : null,
+          urgentPrecisionPercent: predictedUrgent.length ? Math.round((trueUrgentPredictions / predictedUrgent.length) * 100) : null,
+          manualReview: labelled.filter((item) => item.review).length,
+          matrix,
+          results: labelled.map((item) => ({
+            id: item.id,
+            predicted: item.predicted,
+            expected: item.expected,
+            correct: item.correct,
+            manualReview: item.review,
+            secondaryRoute: item.secondary || null,
+            reason: item.reason,
+            sensitiveIndicators: item.sensitive || [],
+          })),
+        };
+      }
+
+      function renderEvidence() {
+        const target = document.getElementById('run-evidence');
+        const exportButton = document.getElementById('export-evidence');
+        const summary = currentRunSummary();
+        if (!summary.processed) {
+          target.innerHTML = '<p>Run the 50 supplied emails to generate the current report.</p>';
+          exportButton.disabled = true;
+          return;
+        }
+        const matrixHead = categories.map((category) => `<th>${category}</th>`).join('');
+        const matrixRows = categories.map((expected) => `<tr><th>${expected}</th>${categories.map((predicted) => `<td>${summary.matrix[expected][predicted]}</td>`).join('')}</tr>`).join('');
+        target.innerHTML = `
+          <div class="summary-grid">
+            <div class="summary-box"><span>Processed</span><strong>${summary.processed}/50</strong></div>
+            <div class="summary-box"><span>Agreement</span><strong>${summary.correct}/${summary.processed} (${summary.agreementPercent}%)</strong></div>
+            <div class="summary-box"><span>Urgent recall</span><strong>${summary.urgentFound}/${summary.urgentExpected} (${summary.urgentRecallPercent}%)</strong></div>
+            <div class="summary-box"><span>Manual review</span><strong>${summary.manualReview}</strong></div>
+          </div>
+          <p><strong>Run time:</strong> ${escapeHtml(lastRunAt.toLocaleString())}. <strong>Disagreements:</strong> ${summary.disagreements}. <strong>Urgent precision:</strong> ${summary.urgentPrecisionPercent}%.</p>
+          <table class="matrix"><caption>Confusion matrix — rows are Priya’s labels; columns are prototype decisions</caption><thead><tr><th>Expected ↓ / Predicted →</th>${matrixHead}</tr></thead><tbody>${matrixRows}</tbody></table>
+          <p class="note"><strong>Evidence limit:</strong> this is development-set agreement, not independent accuracy, because these same 50 examples informed the rules. Use “Try a new email” for an unscored demonstration and the freeze-then-score tool for a future unseen labelled set.</p>`;
+        exportButton.disabled = false;
+      }
+
+      function filteredResults() {
+        if (activeFilter === 'urgent') return results.filter((item) => (item.reviewedCategory || item.predicted) === 'urgent' || item.expected === 'urgent');
+        if (activeFilter === 'review') return results.filter((item) => item.review);
+        if (activeFilter === 'incorrect') return results.filter((item) => item.correct === false);
+        return results;
+      }
+
+      function updateMetrics() {
+        const labelled = results.filter((item) => item.expected);
+        const correct = labelled.filter((item) => item.correct).length;
+        const expectedUrgent = labelled.filter((item) => item.expected === 'urgent');
+        const foundUrgent = expectedUrgent.filter((item) => item.predicted === 'urgent').length;
+        const reviews = labelled.filter((item) => item.review).length;
+        document.getElementById('processed').textContent = labelled.length;
+        document.getElementById('accuracy').textContent = labelled.length ? `${((correct / labelled.length) * 100).toFixed(0)}%` : '—';
+        document.getElementById('agreement-count').textContent = `${correct} of ${labelled.length} labels agree`;
+        document.getElementById('urgent-recall').textContent = `${foundUrgent}/${expectedUrgent.length}`;
+        document.getElementById('urgent-count').textContent = expectedUrgent.length ? `${((foundUrgent / expectedUrgent.length) * 100).toFixed(0)}% urgent recall` : 'No labelled urgent messages';
+        document.getElementById('review-count').textContent = reviews;
+        const unscored = results.length - labelled.length;
+        document.getElementById('status').textContent = `${labelled.length} evaluated · ${labelled.length - correct} disagreements${unscored ? ` · ${unscored} live trial` : ''}`;
+        renderEvidence();
+      }
+
+      function renderList() {
+        const visible = filteredResults();
+        if (!visible.length) {
+          list.innerHTML = `<div class="detail-empty">No messages in this view.</div>`;
+          detail.innerHTML = `<div class="detail-empty">The prototype found no matching messages.</div>`;
+          selectedId = null;
+          return;
+        }
+        if (!visible.some((item) => item.id === selectedId)) selectedId = visible[0].id;
+        list.innerHTML = visible.map((item) => {
+          const displayedCategory = item.reviewedCategory || item.predicted;
+          const scoreMark = item.correct === null ? '<span class="unscored">new</span>' : `<span class="${item.correct ? 'correct' : 'incorrect'}">${item.correct ? '✓' : '✕'}</span>`;
+          return `
+          <button class="email-row ${item.id === selectedId ? 'selected' : ''}" type="button" data-id="${item.id}">
+            <span class="email-id">${item.id}</span>
+            <span><span class="sender">${escapeHtml(item.from_name || item.from_email || 'Unknown sender')}</span><span class="subject">${escapeHtml(item.subject || '(no subject)')}</span><span class="snippet">${escapeHtml((item.body || '').replace(/\s+/g, ' ').slice(0, 115))}</span></span>
+            <span class="labels"><span class="label ${displayedCategory}">${displayedCategory}</span>${item.review ? '<span class="label review">review</span>' : ''}${item.reviewedCategory ? '<span class="label review">corrected</span>' : ''}${scoreMark}</span>
+          </button>`;
+        }).join('');
+        list.querySelectorAll('.email-row').forEach((row) => row.addEventListener('click', () => { selectedId = row.dataset.id; renderList(); renderDetail(); }));
+        renderDetail();
+      }
+
+      function renderDetail() {
+        const item = results.find((entry) => entry.id === selectedId);
+        if (!item) return;
+        const displayedCategory = item.reviewedCategory || item.predicted;
+        const ruleStrength = (item.confidence || 0.5) >= 0.9 ? 'High' : (item.confidence || 0.5) >= 0.75 ? 'Medium' : 'Low';
+        const comparison = item.expected ? `
+          <div class="comparison">
+            <div class="comparison-item"><span>Original prototype decision</span><strong class="${item.correct ? 'correct' : 'incorrect'}">${item.predicted}</strong></div>
+            <div class="comparison-item"><span>Priya’s label</span><strong>${item.expected}</strong></div>
+          </div>
+          <p class="note"><strong>Priya’s note:</strong> ${escapeHtml(item.expectedNote)}</p>` : `
+          <div class="comparison"><div class="comparison-item"><span>Evaluation status</span><strong>Unscored live trial</strong></div><div class="comparison-item"><span>Human decision</span><strong>${item.confirmed ? escapeHtml(displayedCategory) : 'Awaiting review'}</strong></div></div>
+          <p class="note">This email has no Priya answer label. It demonstrates a real prediction, but it is excluded from the 50-email accuracy score.</p>`;
+        const events = auditEvents.filter((event) => event.emailId === item.id || event.emailId === 'RUN').slice(0, 5);
+        detail.innerHTML = `
+          <h2>${escapeHtml(item.subject || '(no subject)')}</h2>
+          <div class="from">${escapeHtml(item.from_name || item.from_email || 'Unknown sender')} · ${escapeHtml(item.received_at || '')}</div>
+          <div class="body">${escapeHtml(item.body || '')}</div>
+          <div class="decision ${displayedCategory === 'urgent' ? 'urgent-border' : ''}">
+            <div class="decision-title"><span>${item.reviewedCategory ? 'Priya-corrected route' : 'Prototype decision'}</span><span class="label ${displayedCategory}">${displayedCategory}</span></div>
+            <p class="reason">${escapeHtml(item.reason)}</p>
+            <div class="confidence">Rule-match strength: <strong>${ruleStrength}</strong> · this is not a probability and has not been statistically calibrated</div>
+          </div>
+          ${comparison}
+          ${item.sensitive?.length ? `<p class="note"><strong>Needs review:</strong> ${item.sensitive.map(escapeHtml).join(', ')}. Keep this content inside approved Workspace handling.</p>` : ''}
+          <div class="detail-actions">
+            <button class="action-button primary" id="confirm-route" type="button">${item.confirmed ? 'Confirmed ✓' : 'Confirm route'}</button>
+            <select class="route-select" id="correct-route" aria-label="Correct route">
+              ${['bookings','repairs','billing','urgent'].map((category) => `<option value="${category}" ${category === displayedCategory ? 'selected' : ''}>${category}</option>`).join('')}
+            </select>
+            <button class="action-button" id="save-correction" type="button">Save correction</button>
+            ${displayedCategory === 'urgent' ? `<button class="action-button alert" id="acknowledge" type="button">${item.acknowledged ? 'Repairs acknowledged ✓' : 'Simulate Repairs acknowledgement'}</button>` : ''}
+          </div>
+          <div class="audit"><h3>Audit trail</h3>${events.length ? events.map((event) => `<div class="audit-item"><span>${escapeHtml(event.time)}</span><span>${escapeHtml(event.message)}</span></div>`).join('') : '<div class="note">No review action recorded yet.</div>'}</div>`;
+
+        document.getElementById('confirm-route').addEventListener('click', () => {
+          item.confirmed = true;
+          addAudit(item.id, `Priya confirmed the ${displayedCategory} route.`);
+          renderDetail();
+        });
+        document.getElementById('save-correction').addEventListener('click', () => {
+          const corrected = document.getElementById('correct-route').value;
+          item.reviewedCategory = corrected;
+          item.confirmed = true;
+          addAudit(item.id, `Priya changed the route from ${item.predicted} to ${corrected}. Original evaluation retained.`);
+          renderList();
+        });
+        const acknowledge = document.getElementById('acknowledge');
+        if (acknowledge) acknowledge.addEventListener('click', () => {
+          item.acknowledged = true;
+          addAudit(item.id, 'Repairs acknowledged the urgent alert. Response timer stopped.');
+          renderDetail();
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+      }
+
+      document.getElementById('run').addEventListener('click', () => {
+        const button = document.getElementById('run');
+        const wrap = document.getElementById('progress-wrap');
+        const bar = document.getElementById('progress-bar');
+        button.disabled = true;
+        button.textContent = 'Processing…';
+        wrap.style.display = 'block';
+        bar.style.width = '18%';
+        setTimeout(() => { bar.style.width = '68%'; }, 180);
+        setTimeout(() => {
+          classifyAll();
+          updateMetrics();
+          selectedId = 'E46';
+          renderList();
+          bar.style.width = '100%';
+          button.textContent = 'Run again';
+          button.disabled = false;
+          setTimeout(() => { wrap.style.display = 'none'; bar.style.width = '0'; }, 350);
+        }, 520);
+      });
+
+      document.querySelectorAll('.filter').forEach((button) => button.addEventListener('click', () => {
+        activeFilter = button.dataset.filter;
+        document.querySelectorAll('.filter').forEach((item) => item.classList.toggle('active', item === button));
+        if (results.length) renderList();
+      }));
+
+      document.getElementById('open-trial').addEventListener('click', () => trialDialog.showModal());
+      document.getElementById('close-trial').addEventListener('click', () => trialDialog.close());
+      document.getElementById('cancel-trial').addEventListener('click', () => trialDialog.close());
+      document.getElementById('open-evidence').addEventListener('click', () => {
+        renderEvidence();
+        evidenceDialog.showModal();
+      });
+      document.getElementById('close-evidence').addEventListener('click', () => evidenceDialog.close());
+      document.getElementById('done-evidence').addEventListener('click', () => evidenceDialog.close());
+      document.getElementById('export-evidence').addEventListener('click', () => {
+        const summary = currentRunSummary();
+        if (!summary.processed) return;
+        const report = {
+          product: 'Harbor Line Email Triage v1',
+          mode: 'Disconnected shadow prototype',
+          dataset: '50 supplied simulated emails',
+          evaluationWarning: 'Development-set agreement only; the examples informed the classifier rules.',
+          ...summary,
+          handoff: {
+            dailyOwner: 'Priya: review flagged messages, correct routes and report recurring mistakes.',
+            technicalOwner: 'Connor: monthly health check, Workspace authorization and kill switch.',
+            businessOwner: 'Doug: approve privacy, spending, alert ownership and production changes.',
+            softwareCost: 'Target CAD $0/month using existing Google Workspace and Apps Script.',
+            labourEstimate: '1–2 technical-owner hours/month; estimated CAD $65–$130/month at the discovery rate.',
+            wrongResult: 'No deletion or auto-reply. Correct the label, retain the metadata audit, retry failures, and return to manual routing if urgent automation is unsafe.',
+          },
+        };
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `harbor-line-run-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+      document.getElementById('trial-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        liveCounter += 1;
+        const email = {
+          id: `NEW-${String(liveCounter).padStart(2, '0')}`,
+          received_at: new Date().toLocaleString(),
+          from_name: document.getElementById('trial-name').value,
+          from_email: document.getElementById('trial-email').value,
+          subject: document.getElementById('trial-subject').value,
+          body: document.getElementById('trial-body').value,
+        };
+        const prediction = window.HLBClassifier.classifyEmail(email);
+        const item = { ...email, ...prediction, predicted: prediction.category, expected: null, expectedNote: '', correct: null, source: 'live-trial' };
+        results.unshift(item);
+        selectedId = item.id;
+        activeFilter = 'all';
+        document.querySelectorAll('.filter').forEach((button) => button.classList.toggle('active', button.dataset.filter === 'all'));
+        addAudit(item.id, `New email classified as ${item.predicted} in shadow mode.`);
+        updateMetrics();
+        renderList();
+        trialDialog.close();
+      });
+    })();
+  </script>
+</body>
+</html>
